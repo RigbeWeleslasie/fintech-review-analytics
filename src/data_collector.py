@@ -7,9 +7,13 @@ Typical usage:
     clean.to_csv('data/raw/bank_reviews_clean.csv', index=False)
 """
 
+import logging
 import re
 import time
+
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 
 # Dashen has two app IDs because it migrated from com.cr2.amolelight to a new
@@ -36,9 +40,10 @@ def scrape_reviews(app_id: str, bank_name: str, count: int = 500,
         df = pd.DataFrame(result)
         df['bank']   = bank_name
         df['source'] = 'Google Play'
+        log.info("[%s] scraped %d reviews from %s", bank_name, len(df), app_id)
         return df
     except Exception as exc:
-        print(f"[{bank_name}] Scrape failed ({app_id}): {exc}")
+        log.warning("[%s] scrape failed for %s: %s", bank_name, app_id, exc)
         return pd.DataFrame()
 
 
