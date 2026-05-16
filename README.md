@@ -62,9 +62,6 @@ source venv/bin/activate          # Linux/Mac
 
 # 3. Install all dependencies
 pip install -r requirements.txt
-
-# 4. Download spaCy English model (needed for lemmatization)
-python -m spacy download en_core_web_sm
 ```
 
 ---
@@ -146,7 +143,7 @@ Reviews were scraped using the [`google-play-scraper`](https://pypi.org/project/
 | BOA | 43.4% | 34.9% | 21.7% | 3.29 ★ |
 | Dashen | 57.9% | 27.5% | 14.7% | 3.86 ★ |
 
-**Themes identified (per bank):** Transaction Performance, App Stability & Technical Issues, User Experience & Design, Account & Security, Customer Support, General Feedback.
+**Themes identified per bank:** Transaction Performance, App Stability & Technical Issues, User Experience & Design, Account & Security, Customer Support, General Feedback.
 
 ---
 
@@ -161,7 +158,7 @@ sudo -u postgres psql -c "CREATE USER bankuser WITH PASSWORD 'bankpass123';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE bank_reviews TO bankuser;"
 ```
 
-Schema is documented in `notebooks/database_setup.ipynb` and can be exported as `scripts/schema.sql`.
+Schema is documented in `notebooks/database_setup.ipynb`.
 
 ---
 
@@ -175,9 +172,9 @@ GitHub Actions workflow (`.github/workflows/unittests.yml`) runs on every push t
 
 ## Ethical Considerations
 
-- **Negativity bias:** Users are significantly more likely to leave a review after a frustrating experience. Negative sentiment percentages likely overstate dissatisfaction among the full user base.
+- **Negativity bias:** Users are more likely to leave a review after a frustrating experience, so negative percentages likely overstate dissatisfaction among the full user base.
 - **Sampling bias:** Only English-language reviews were scraped. Given that most Ethiopian bank users communicate in Amharic, the dataset under-represents the majority of users.
-- **Date skew:** The scraper retrieves the most recent reviews (`Sort.NEWEST`), so older user experiences are under-represented.
+- **Date skew:** `Sort.NEWEST` means older experiences are under-represented.
 
 ---
 
