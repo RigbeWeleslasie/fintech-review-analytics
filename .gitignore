@@ -2,7 +2,7 @@ venv/
 __pycache__/
 *.pyc
 .env
-.vscode/
+.vscode/*.log
 data/
 *.csv
 *.zip
