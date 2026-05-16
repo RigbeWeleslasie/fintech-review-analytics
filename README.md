@@ -23,25 +23,33 @@ This project builds a structured analytics pipeline for Omega Consultancy to adv
 
 ```
 fintech-review-analytics/
-├── .github/workflows/unittests.yml   # CI/CD — runs pytest on every push
+├── .github/workflows/unittests.yml      # CI/CD — runs pytest on every push
 ├── .gitignore
 ├── requirements.txt
+├── Makefile                             # make setup / test / lint / scrape
+├── CONTRIBUTING.md                      # setup, conventions, branch strategy
 ├── README.md
-├── data/
-│   └── raw/                          # gitignored — local only
-│       ├── bank_reviews_clean.csv    # 1,837 rows, 5 columns
-│       └── bank_reviews_sentiment.csv # 1,837 rows, 8 columns
+├── data/                                # CSV files gitignored — see data/README.md
+│   ├── README.md                        # documents data flow and how to reproduce
+│   └── raw/
+│       ├── bank_reviews_clean.csv       # produced by scripts/preprocess.py (Task 1)
+│       └── bank_reviews_sentiment.csv   # produced by sentiment_analysis.ipynb (Task 2)
 ├── notebooks/
-│   ├── data_collection.ipynb         # Task 1: scraping + preprocessing
-│   ├── sentiment_analysis.ipynb      # Task 2: sentiment + thematic analysis
-│   └── database_setup.ipynb          # Task 3: PostgreSQL schema + insert
+│   ├── data_collection.ipynb            # Task 1: scraping + preprocessing
+│   ├── sentiment_analysis.ipynb         # Task 2: sentiment + thematic analysis
+│   ├── database_setup.ipynb             # Task 3: PostgreSQL schema + insert
+│   └── insights_recommendations.ipynb  # Task 4: insights + visualisations
 ├── src/
-│   ├── data_collector.py             # Reusable scraping functions
-│   └── sentiment_analyzer.py         # Reusable NLP functions
+│   ├── data_collector.py                # Reusable scraping and preprocessing functions
+│   └── sentiment_analyzer.py            # Reusable VADER, TF-IDF, and theme functions
 ├── scripts/
-│   └── preprocess.py                 # Standalone preprocessing CLI script
+│   ├── preprocess.py                    # Standalone scrape + preprocess CLI
+│   └── schema.sql                       # PostgreSQL DDL for bank_reviews database
 └── tests/
-    └── test_data_collection.py       # Pytest unit tests
+    ├── conftest.py                      # Session fixture: generates sample CSV for CI
+    ├── test_data_collection.py          # CSV schema and data quality checks
+    ├── test_preprocessing.py            # Unit tests for clean_text and preprocess_reviews
+    └── test_sentiment_analyzer.py       # Unit tests for VADER, themes, TF-IDF, pipeline
 ```
 
 ---
@@ -105,17 +113,41 @@ pytest tests/ -v
 
 ## Scraping Methodology
 
-Reviews were scraped using the [`google-play-scraper`](https://pypi.org/project/google-play-scraper/) Python library.
+Reviews were scraped using the [`google-play-scraper`](https://pypi.org/project/google-play-scraper/) Python library on **14 May 2026**.
 
-**Parameters used:**
-- Language: `en` (English), Country: `et` (Ethiopia)
-- Sort: `Sort.NEWEST` to capture the most recent feedback
-- Target count: 500–600 per bank
+### Bank identifiers
 
-**Limitations encountered:**
-- The original Dashen Bank app ID (`com.dashen.dashensmart`) returned zero results — the app migrated to `com.dashen.dashensuperapp` (Dashen Super App). The updated ID was used.
-- BOA returned 498 reviews (below the 500 target) due to Google Play rate limiting at the time of scraping. The minimum threshold of 400 is met.
-- Only English-language reviews were collected; Amharic reviews were excluded from this iteration (a significant limitation given the user base).
+| Bank | App ID(s) | Notes |
+|------|-----------|-------|
+| Commercial Bank of Ethiopia | `com.combanketh.mobilebanking` | Single active app |
+| Bank of Abyssinia | `com.boa.boaMobileBanking` | Single active app |
+| Dashen Bank | `com.dashen.dashensuperapp` (primary)<br>`com.cr2.amolelight` (legacy) | Dashen migrated from the legacy Amole app to a super-app; both IDs are scraped and combined so historical reviews are not lost |
+
+### Scraping parameters
+
+| Parameter | Value | Reason |
+|-----------|-------|--------|
+| `lang` | `en` | English-language reviews only |
+| `country` | `et` | Ethiopia store |
+| `sort` | `Sort.NEWEST` | Prioritises recent feedback over most-liked |
+| `count` | 500 per app ID | Upper bound; actual yield depends on available reviews |
+| Sleep between requests | 1 second | Polite rate-limiting to avoid Play Store throttling |
+
+To reproduce with different parameters:
+```bash
+python scripts/preprocess.py --count 500 --lang en --country et --output data/raw/bank_reviews_clean.csv
+```
+
+### Date range of collected reviews
+
+Reviews span **2022-07-16 to 2026-05-14** (sorted newest-first, cutoff by available review count).
+
+### Rate-limit and localization constraints
+
+- **Rate limiting:** Google Play's unofficial API does not publish rate limits. A 1-second sleep between requests (`time.sleep(1)`) was sufficient for this dataset size. For counts above 1,000 per app, increase the sleep to 2–3 seconds to avoid `HTTP 429` errors.
+- **Language filter:** Only `lang='en'` reviews are returned. A significant portion of Ethiopian bank users write in Amharic; those reviews are excluded. This means negative sentiment is likely under-reported for CBE and BOA whose user bases skew toward Amharic speakers.
+- **Country filter:** `country='et'` restricts results to the Ethiopian Play Store. Reviews from diaspora users on other country stores are not captured.
+- **Review availability:** BOA returned 498 reviews (below the 500 target) — the Play Store had fewer English reviews available. Minimum threshold of 400 per bank is met for all three banks.
 
 ---
 

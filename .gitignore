@@ -3,8 +3,11 @@ __pycache__/
 *.pyc
 .env
 .vscode/*.log
-data/
-*.csv
+data/**/*.csv
+data/**/*.db
+data/**/*.zip
+!data/README.md
+!data/raw/.gitkeep
 *.zip
 *.db
 .ipynb_checkpoints/
